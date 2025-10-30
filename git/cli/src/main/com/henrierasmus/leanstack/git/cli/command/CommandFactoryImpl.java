@@ -1,11 +1,25 @@
 package com.henrierasmus.leanstack.git.cli.command;
 
+import com.henrierasmus.leanstack.git.cli.error.CommandNotFoundException;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
 public class CommandFactoryImpl implements CommandFactory {
-    /*
-    This is going to take a reference to a class as an argument.
-    It will use the reference and use reflection to call the class constructor and return the instance just created
-    */
-    public Command make(Class<? extends Command> clazz) {
-        return null;
+    public CommandFactoryImpl() {}
+
+    public Command make(Class<? extends Command> token) throws NoSuchMethodException, CommandNotFoundException {
+        Command command;
+        Constructor<? extends Command> constructor = token.getConstructor();
+
+        try {
+            command = constructor.newInstance();
+        } catch(InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            System.out.println(e.getMessage());
+            // TODO handle this exception better, maybe create another
+            throw new CommandNotFoundException("test");
+        }
+
+        return command;
     }
 }

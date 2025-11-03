@@ -1,21 +1,31 @@
 package com.henrierasmus.leanstack.git.cli;
 
+import com.henrierasmus.leanstack.git.cli.error.CommandExecutionException;
 import com.henrierasmus.leanstack.git.cli.error.CommandNotFoundException;
 import com.henrierasmus.leanstack.git.cli.runtime.CommandRegistry;
+import com.henrierasmus.leanstack.git.cli.runtime.Runner;
 
 public class Main {
     public static void main(String[] args) {
-        CommandRegistry registry = CommandRegistry.getInstance();
+        CommandRegistry registry = new CommandRegistry();
+        Runner runner = new Runner(registry);
 
         if (args == null || args[0] == null) {
             System.out.println("No command provided to execute");
-            System.exit(1);
+            System.exit(127);
         }
 
         try {
-            registry.execute(args[0]);
+            runner.execute(args);
         } catch (CommandNotFoundException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Command not found: " + e.getMessage());
+            System.exit(127);
+        } catch (CommandExecutionException e) {
+            System.out.println("Failed to execute command: " + e.getMessage());
+            System.exit(1);
+        } catch (Exception e) {
+            System.out.println("Unexpected error: " + e.getMessage());
+            System.exit(1);
         }
     }
 }

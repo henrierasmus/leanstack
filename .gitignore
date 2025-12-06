@@ -7,10 +7,10 @@
 *.iws
 
 # Compiled
-**/.out/
+**/out/
 .out/
 
-.testing/
-**/.testing/
+testing/
+**/testing/
 
 *.log

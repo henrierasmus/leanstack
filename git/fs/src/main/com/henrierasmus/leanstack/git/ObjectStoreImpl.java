@@ -36,6 +36,17 @@ public class ObjectStoreImpl implements ObjectStore {
     }
 
     @Override
+    public Path ensureIndex(String gitDir) throws IOException {
+        Path path = Path.of(gitDir + "/.jgit/index");
+
+        if (Files.exists(path)) {
+            return path;
+        }
+
+        return fs.createFile(path);
+    }
+
+    @Override
     public ObjectId computeId(String file, ObjectType type) throws IOException {
         GitObject gitObject = createGitObject(Files.readAllBytes(Path.of(file)), type);
         byte[] combined = concatByteArray(objectHeaderToBytes(gitObject), gitObject.serialize());
@@ -53,13 +64,27 @@ public class ObjectStoreImpl implements ObjectStore {
         ObjectId objectId = computeId(object);
         String dir = ".jgit/objects/" + objectId.getHex().substring(0, 2);
         String gitFile = dir + "/" + objectId.getHex().substring(2);
+        Path filePath = Path.of(gitFile);
 
         fs.createDirectory(Path.of(dir));
-        fs.createFile(Path.of(gitFile));
-
+        fs.createFile(filePath);
         byte[] toWrite = concatByteArray(objectHeaderToBytes(object), object.serialize());
-        Files.write(Path.of(gitFile), toWrite);
+        fs.write(filePath.toString(), toWrite);
+
         return objectId;
+    }
+
+    public void updateIndex(String path, String file, String hash) throws IOException {
+        fs.write(ensureIndex(path).toString(), file, hash);
+    }
+
+    @Override
+    public String catFile(String id) throws IOException {
+        String dir = id.substring(0, 2);
+        String file = id.substring(2);
+        Path path = Path.of(".jgit/objects/" + dir + "/" + file);
+
+        return fs.readFile(path);
     }
 
     private byte[] concatByteArray(byte[] header, byte[] body) {
@@ -76,7 +101,6 @@ public class ObjectStoreImpl implements ObjectStore {
             return constructor.newInstance(data);
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException |
                  InvocationTargetException e) {
-            // TODO: Can do better than just a runtime exception
             System.out.println(e.getMessage());
             throw new RuntimeException(e.getMessage(), e);
         }

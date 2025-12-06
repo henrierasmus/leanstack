@@ -49,6 +49,7 @@ public class InitRepository {
         String gitDir = dirPath + "/.jgit";
         repoLayout.ensureGitDir(gitDir);
         objectStore.ensureObjectDir(gitDir);
+        objectStore.ensureIndex(gitDir);
         refStore.ensureRefDir(gitDir);
     }
 

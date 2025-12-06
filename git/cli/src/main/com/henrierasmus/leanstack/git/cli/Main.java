@@ -49,6 +49,9 @@ public class Main {
         } catch (CommandExecutionException e) {
             System.out.println("Failed to execute command: " + e.getMessage());
             System.exit(1);
+        } catch(IllegalArgumentException e) {
+            System.out.println("Illegal argument: " + e.getMessage());
+            System.exit(1);
         } catch (Exception e) {
             System.out.println("Unexpected error: " + e.getMessage());
             System.exit(1);

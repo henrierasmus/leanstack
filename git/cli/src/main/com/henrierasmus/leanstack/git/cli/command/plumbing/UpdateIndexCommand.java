@@ -4,27 +4,31 @@ import com.henrierasmus.leanstack.git.cli.command.Command;
 import com.henrierasmus.leanstack.git.cli.command.CommandContext;
 import com.henrierasmus.leanstack.git.cli.command.CommandFactory;
 import com.henrierasmus.leanstack.git.cli.runtime.RuntimeContext;
-import com.henrierasmus.leanstack.git.usecase.InitRepository;
 
 import java.io.IOException;
 
-public class InitCommand implements Command {
+public class UpdateIndexCommand implements Command {
     private final CommandContext args;
     private final RuntimeContext ctx;
-    private final InitRepository service = InitRepository.getInstance();
 
-    private InitCommand(CommandContext args, RuntimeContext ctx) {
+    public UpdateIndexCommand(CommandContext args, RuntimeContext ctx) {
+        if (args.getArguments().size() < 2) throw new IllegalArgumentException("Expected 2 arguments");
         this.args = args;
         this.ctx = ctx;
     }
 
     @Override
     public String execute() throws IOException {
-        service.initRepo(System.getProperty("user.dir"));
-        return "Created";
+        ctx.objectStore().updateIndex(
+                System.getProperty("user.dir"),
+                args.getArguments().get(0),
+                args.getArguments().get(1) + "\n"
+        );
+
+        return "";
     }
 
     public static CommandFactory factory() {
-        return InitCommand::new;
+        return UpdateIndexCommand::new;
     }
 }

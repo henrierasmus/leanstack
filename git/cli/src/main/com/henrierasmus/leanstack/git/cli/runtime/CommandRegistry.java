@@ -28,6 +28,8 @@ public class CommandRegistry {
         logger.info("Init Registry");
         REGISTRY.put("init", InitCommand.factory());
         REGISTRY.put("hash-object", HashObjectCommand.factory());
+        REGISTRY.put("cat-file", CatFileCommand.factory());
+        REGISTRY.put("update-index", UpdateIndexCommand.factory());
 //        REGISTRY.put("write-tree", WriteTreeCommand.class);
 //        REGISTRY.put("read-tree", ReadTreeCommand.class);
 //        REGISTRY.put("commit-tree", CommitTreeCommand.class);

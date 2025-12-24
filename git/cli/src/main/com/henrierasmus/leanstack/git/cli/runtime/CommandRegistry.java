@@ -30,7 +30,7 @@ public class CommandRegistry {
         REGISTRY.put("hash-object", HashObjectCommand.factory());
         REGISTRY.put("cat-file", CatFileCommand.factory());
         REGISTRY.put("update-index", UpdateIndexCommand.factory());
-//        REGISTRY.put("write-tree", WriteTreeCommand.class);
+        REGISTRY.put("write-tree", WriteTreeCommand.factory());
 //        REGISTRY.put("read-tree", ReadTreeCommand.class);
 //        REGISTRY.put("commit-tree", CommitTreeCommand.class);
     }

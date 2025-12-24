@@ -1,17 +1,14 @@
 package com.henrierasmus.leanstack.git.domain;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class Tree implements GitObject {
-    private final List<GitObject> objects;
+    private final List<TreeEntry> treeEntries;
+    private final byte[] serialized;
 
-    public Tree() {
-        objects = new ArrayList<>();
-    }
-
-    public Tree(GitObject... object) {
-        objects = new ArrayList<>(List.of(object));
+    public Tree(List<TreeEntry> treeEntries) {
+        this.treeEntries = List.copyOf(treeEntries);
+        this.serialized = serializeTree();
     }
 
     @Override
@@ -21,19 +18,32 @@ public class Tree implements GitObject {
 
     @Override
     public byte[] serialize() {
-        return null;
+        return serialized.clone();
+    }
+
+    public byte[] serializeTree() {
+        int size = 0;
+
+        for (TreeEntry entry : treeEntries) {
+            size += entry.serializedSize();
+        }
+
+        byte[] serialized = new byte[size];
+        int position = 0;
+
+        for (TreeEntry entry : treeEntries) {
+            position = entry.writeTo(serialized, position);
+        }
+
+        return serialized;
     }
 
     @Override
     public String getHeader() {
-        return "";
+        return type().typeName() + " " + serialized.length + "\0";
     }
 
-    public void addObject(GitObject object) {
-        objects.add(object);
-    }
-
-    public List<GitObject> getObjects() {
-        return objects;
+    public List<TreeEntry> getObjects() {
+        return treeEntries;
     }
 }

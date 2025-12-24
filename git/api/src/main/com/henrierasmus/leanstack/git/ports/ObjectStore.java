@@ -14,11 +14,18 @@ public interface ObjectStore {
 
     Path ensureIndex(String gitDir) throws IOException;
 
-    ObjectId computeId(String file, ObjectType type) throws IOException;
-
     ObjectId storeObject(String file, ObjectType type) throws IOException;
 
     String catFile(String id) throws IOException;
 
     void updateIndex(String path, String file, String hash) throws IOException;
+
+    void updateIndex(String path, String data) throws IOException;
+
+    /**
+     * This is going to take the data in the index file and create trees
+     *
+     * @return
+     */
+    ObjectId writeTree() throws IOException;
 }

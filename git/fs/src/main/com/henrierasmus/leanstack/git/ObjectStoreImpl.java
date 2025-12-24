@@ -5,6 +5,8 @@ import com.henrierasmus.leanstack.git.fs.internal.FileSystemService;
 import com.henrierasmus.leanstack.git.fs.internal.MessageDigestService;
 import com.henrierasmus.leanstack.git.ports.ObjectStore;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -13,8 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class ObjectStoreImpl implements ObjectStore {
     FileSystemService fs = new FileSystemService();
@@ -47,23 +48,11 @@ public class ObjectStoreImpl implements ObjectStore {
     }
 
     @Override
-    public ObjectId computeId(String file, ObjectType type) throws IOException {
-        GitObject gitObject = createGitObject(Files.readAllBytes(Path.of(file)), type);
-        byte[] combined = concatByteArray(objectHeaderToBytes(gitObject), gitObject.serialize());
-        return new ObjectId(md.toHex(md.hash(combined)));
-    }
-
-    public ObjectId computeId(GitObject object) {
-        byte[] combined = concatByteArray(objectHeaderToBytes(object), object.serialize());
-        return new ObjectId(md.toHex(md.hash(combined)));
-    }
-
-    @Override
     public ObjectId storeObject(String file, ObjectType type) throws IOException {
         GitObject object = createGitObject(Files.readAllBytes(Path.of(file)), type);
         ObjectId objectId = computeId(object);
-        String dir = ".jgit/objects/" + objectId.getHex().substring(0, 2);
-        String gitFile = dir + "/" + objectId.getHex().substring(2);
+        String dir = ".jgit/objects/" + objectId.getDir();
+        String gitFile = dir + "/" + objectId.getFile();
         Path filePath = Path.of(gitFile);
 
         fs.createDirectory(Path.of(dir));
@@ -74,8 +63,58 @@ public class ObjectStoreImpl implements ObjectStore {
         return objectId;
     }
 
+    // TODO: some similarities should be found to have 1 "writeObject" method
+    @Override
+    public ObjectId writeTree() throws IOException, IndexOutOfBoundsException {
+        Path indexPath = Path.of(".jgit/index");
+        List<TreeEntry> entries = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(indexPath.toFile()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] objectData = line.split(" ", 2);
+                ObjectId objectId = new ObjectId(objectData[0].getBytes(StandardCharsets.UTF_8));
+
+                Path objectPath = Path.of(".jgit/objects/" + objectId.getDir() + "/" + objectId.getFile());
+                byte[] fileData = fs.readFileBytes(objectPath);
+                int bodyStartIndex = 0;
+
+                for (int i = 0; i < fileData.length; i++) {
+                    if (fileData[i] == 0) {
+                        bodyStartIndex = i + 1;
+                        break;
+                    }
+                }
+
+                int bodyLength = fileData.length - bodyStartIndex;
+                byte[] body = new byte[bodyLength];
+                System.arraycopy(fileData, bodyStartIndex, body, 0, bodyLength);
+
+                // TODO: handle trees as well. Currently I am just handling blobs in Index and Trees
+                GitObject blob = new Blob(body);
+                entries.add(new TreeEntry(objectId.getId(), String.valueOf(objectData[2]),blob.type()));
+            }
+        }
+
+        Tree tree = new Tree(entries);
+        ObjectId treeId = computeId(tree);
+
+        fs.createDirectory(Path.of(".jgit/objects/" + treeId.getDir()));
+        fs.createFile(Path.of(".jgit/objects/" + treeId.getDir() + "/" + treeId.getFile()));
+        byte[] toWrite = concatByteArray(objectHeaderToBytes(tree), tree.serialize());
+        fs.write(".jgit/objects/" + treeId.getDir() + "/" + treeId.getFile(), toWrite);
+
+        return treeId;
+    }
+
+    @Override
     public void updateIndex(String path, String file, String hash) throws IOException {
         fs.write(ensureIndex(path).toString(), file, hash);
+    }
+
+    @Override
+    public void updateIndex(String path, String data) throws IOException {
+        fs.write(ensureIndex(path).toString(), data);
     }
 
     @Override
@@ -87,14 +126,6 @@ public class ObjectStoreImpl implements ObjectStore {
         return fs.readFile(path);
     }
 
-    private byte[] concatByteArray(byte[] header, byte[] body) {
-        byte[] combined = new byte[header.length + body.length];
-        ByteBuffer buffer = ByteBuffer.wrap(combined);
-        buffer.put(header);
-        buffer.put(body);
-        return buffer.array();
-    }
-
     private GitObject createGitObject(byte[] data, ObjectType type) {
         try {
             Constructor<? extends GitObject> constructor = objectTypeMap.get(type).getConstructor(byte[].class);
@@ -104,6 +135,19 @@ public class ObjectStoreImpl implements ObjectStore {
             System.out.println(e.getMessage());
             throw new RuntimeException(e.getMessage(), e);
         }
+    }
+
+    private ObjectId computeId(GitObject object) {
+        byte[] combined = concatByteArray(objectHeaderToBytes(object), object.serialize());
+        return new ObjectId(md.hash(combined));
+    }
+
+    private byte[] concatByteArray(byte[] header, byte[] body) {
+        byte[] combined = new byte[header.length + body.length];
+        ByteBuffer buffer = ByteBuffer.wrap(combined);
+        buffer.put(header);
+        buffer.put(body);
+        return buffer.array();
     }
 
     private byte[] objectHeaderToBytes(GitObject objects) {

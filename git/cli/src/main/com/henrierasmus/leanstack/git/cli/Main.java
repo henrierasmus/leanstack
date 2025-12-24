@@ -44,15 +44,19 @@ public class Main {
         try {
             System.out.println(runner.execute(args));
         } catch (CommandNotFoundException e) {
-            System.out.println("Command not found: " + e.getMessage());
+            logger.error("CommandNotFoundException: ", e);
+            System.out.println("Command not found");
             System.exit(127);
         } catch (CommandExecutionException e) {
-            System.out.println("Failed to execute command: " + e.getMessage());
+            logger.error("CommandExecutionException: ", e);
+            System.out.println("Something went wrong executing the command");
             System.exit(1);
         } catch(IllegalArgumentException e) {
-            System.out.println("Illegal argument: " + e.getMessage());
+            logger.error("IllegalArgumentException: ", e);
+            System.out.println("Illegal argument: ");
             System.exit(1);
         } catch (Exception e) {
+            logger.error("Uncaught exception: ", e);
             System.out.println("Unexpected error: " + e.getMessage());
             System.exit(1);
         }

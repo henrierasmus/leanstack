@@ -19,12 +19,9 @@ public class UpdateIndexCommand implements Command {
 
     @Override
     public String execute() throws IOException {
-        ctx.objectStore().updateIndex(
-                System.getProperty("user.dir"),
-                args.getArguments().get(0),
-                args.getArguments().get(1) + "\n"
-        );
-
+        // TODO Add some validation, hash length, ensure file extension
+        String data = args.getArguments().get(0) + " " + args.getArguments().get(1) + "\n";
+        ctx.objectStore().updateIndex(System.getProperty("user.dir"), data);
         return "";
     }
 

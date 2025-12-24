@@ -3,7 +3,6 @@ package com.henrierasmus.leanstack.git.cli.command.plumbing;
 import com.henrierasmus.leanstack.git.cli.command.Command;
 import com.henrierasmus.leanstack.git.cli.command.CommandContext;
 import com.henrierasmus.leanstack.git.cli.command.CommandFactory;
-import com.henrierasmus.leanstack.git.domain.ObjectId;
 import com.henrierasmus.leanstack.git.domain.ObjectType;
 import com.henrierasmus.leanstack.git.ports.ObjectStore;
 

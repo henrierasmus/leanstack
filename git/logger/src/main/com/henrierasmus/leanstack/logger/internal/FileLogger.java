@@ -56,8 +56,10 @@ public class FileLogger implements Logger {
         try {
             writer.write(log.formatLog());
             writer.newLine();
-            writer.write(trace.toString());
-            writer.newLine();
+
+            PrintWriter pw = new PrintWriter(writer);
+            trace.printStackTrace(pw);
+
             writer.flush();
         } catch (IOException e) {
             System.out.println("Error writing exception:" + e.getMessage());

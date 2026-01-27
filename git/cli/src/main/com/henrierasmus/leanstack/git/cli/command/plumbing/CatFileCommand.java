@@ -20,6 +20,7 @@ public class CatFileCommand implements Command {
     public String execute() {
         if (args.getArguments() == null || args.getArguments().isEmpty()) throw new IllegalArgumentException("No object provided");
         if (args.getArguments().getFirst().length() < 40) throw new IllegalArgumentException("Invalid object ID");
+
         try {
             return objectStore.catFile(args.getArguments().getFirst());
         } catch(IOException e) {

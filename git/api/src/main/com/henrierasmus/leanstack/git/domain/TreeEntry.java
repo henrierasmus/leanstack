@@ -56,10 +56,8 @@ public class TreeEntry {
         System.arraycopy(buffer, pos, id, 0, OBJECT_ID_LENGTH);
         pos += OBJECT_ID_LENGTH;
 
-        byte fileSizeA;
-        byte fileSizeB;
-        fileSizeA = buffer[pos++];
-        fileSizeB = buffer[pos++];
+        byte fileSizeA = buffer[pos++];
+        byte fileSizeB = buffer[pos++];
 
         int fileSize = ((fileSizeA & 0xFF) << 8) | (fileSizeB & 0xFF);
         if (fileSize < 1) throw new IllegalArgumentException("Malformed data: Git object does not have a name");

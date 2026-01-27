@@ -9,6 +9,10 @@ public class ObjectId {
         this.id = id;
     }
 
+    public ObjectId(String id) {
+        this.id = HexFormat.of().parseHex(id);
+    }
+
     public byte[] getId() {
         return id;
     }

@@ -4,6 +4,7 @@ import com.henrierasmus.leanstack.git.cli.command.Command;
 import com.henrierasmus.leanstack.git.cli.command.CommandContext;
 import com.henrierasmus.leanstack.git.cli.command.CommandFactory;
 import com.henrierasmus.leanstack.git.cli.runtime.RuntimeContext;
+import com.henrierasmus.leanstack.git.domain.ObjectType;
 
 import java.io.IOException;
 
@@ -19,7 +20,11 @@ public class UpdateIndexCommand implements Command {
 
     @Override
     public String execute() throws IOException {
-        // TODO Add some validation, hash length, ensure file extension
+        if (!ctx.objectStore().validateObjectType(args.getArguments().get(0), ObjectType.BLOB) &&
+                !ctx.objectStore().validateObjectType(args.getArguments().get(0), ObjectType.TREE)) {
+            throw new IllegalArgumentException("Only 'blob' or 'tree' objects can be added to index using 'update-index'");
+        }
+
         String data = args.getArguments().get(0) + " " + args.getArguments().get(1) + "\n";
         ctx.objectStore().updateIndex(System.getProperty("user.dir"), data);
         return "";

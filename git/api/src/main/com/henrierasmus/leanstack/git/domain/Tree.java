@@ -1,5 +1,6 @@
 package com.henrierasmus.leanstack.git.domain;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Tree implements GitObject {
@@ -9,6 +10,20 @@ public class Tree implements GitObject {
     public Tree(List<TreeEntry> treeEntries) {
         this.treeEntries = List.copyOf(treeEntries);
         this.serialized = serializeTree();
+    }
+
+    public Tree(byte[] data) {
+        this.serialized = data;
+        this.treeEntries = new ArrayList<>();
+
+        int offset = 0;
+
+        while (offset < data.length) {
+            TreeEntry.ParsedEntry parsedEntry = TreeEntry.parse(data, offset);
+            assert parsedEntry != null;
+            offset = parsedEntry.nextOffset();
+            treeEntries.add(parsedEntry.entry());
+        }
     }
 
     @Override

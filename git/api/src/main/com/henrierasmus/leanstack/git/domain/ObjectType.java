@@ -29,4 +29,15 @@ public enum ObjectType {
             default -> null;
         };
     }
+
+    public static ObjectType getTypeByName(String typeName) {
+        for (ObjectType type : values()) {
+            if (type.typeName().equals(typeName.trim())) {
+                return type;
+            }
+        }
+        System.out.println("return null");
+
+        return null;
+    }
 }

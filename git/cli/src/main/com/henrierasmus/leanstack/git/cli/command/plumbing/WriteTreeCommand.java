@@ -18,19 +18,7 @@ public class WriteTreeCommand implements Command {
 
     @Override
     public String execute() throws IOException {
-        /*
-            1. Get index location
-            2. Loop over files
-            3. build tree a tree for every directory
-
-            What does a tree look like?
-            File with a list of object references:
-                Hash - ABCD10238904532849032
-                Type - Blob/Tree
-                Name - File name?
-         */
-        ctx.objectStore().writeTree();
-        return "";
+        return ctx.objectStore().writeTree().getHex();
     }
 
     public static CommandFactory factory() {

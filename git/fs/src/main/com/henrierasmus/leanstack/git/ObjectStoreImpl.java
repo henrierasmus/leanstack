@@ -25,7 +25,6 @@ public class ObjectStoreImpl implements ObjectStore {
     public ObjectStoreImpl() throws NoSuchAlgorithmException {
         objectTypeMap.put(ObjectType.BLOB, Blob.class);
         objectTypeMap.put(ObjectType.TREE, Tree.class);
-//        objectTypeMap.put(ObjectType.COMMIT, Commit.class);
     }
 
     @Override
@@ -47,23 +46,20 @@ public class ObjectStoreImpl implements ObjectStore {
         return fs.createFile(path);
     }
 
+    // TODO: I need to handle files that already exists in some way
     @Override
     public ObjectId storeObject(String file, ObjectType type) throws IOException {
         GitObject object = createGitObject(Files.readAllBytes(Path.of(file)), type);
         ObjectId objectId = computeId(object);
         String dir = ".jgit/objects/" + objectId.getDir();
         String gitFile = dir + "/" + objectId.getFile();
-        Path filePath = Path.of(gitFile);
 
-        fs.createDirectory(Path.of(dir));
-        fs.createFile(filePath);
         byte[] toWrite = concatByteArray(objectHeaderToBytes(object), object.serialize());
-        fs.write(filePath.toString(), toWrite);
+        createFileAndWrite(dir, gitFile, toWrite);
 
         return objectId;
     }
 
-    // TODO: some similarities should be found to have 1 "writeObject" method
     @Override
     public ObjectId writeTree() throws IOException, IndexOutOfBoundsException {
         Path indexPath = Path.of(".jgit/index");
@@ -72,38 +68,48 @@ public class ObjectStoreImpl implements ObjectStore {
         try (BufferedReader reader = new BufferedReader(new FileReader(indexPath.toFile()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] objectData = line.split(" ", 2);
-                ObjectId objectId = new ObjectId(objectData[0].getBytes(StandardCharsets.UTF_8));
+                String[] objectData = line.split(" ", 3);
+                System.out.println(objectData[0]);
+                ObjectId objectId = new ObjectId(objectData[0]);
 
                 Path objectPath = Path.of(".jgit/objects/" + objectId.getDir() + "/" + objectId.getFile());
                 byte[] fileData = fs.readFileBytes(objectPath);
-                int bodyStartIndex = 0;
+                int bodyStartIndex = findIndexOf(fileData, (byte) 0) + 1;
+                int typeEndIndex = findIndexOf(fileData, (byte) ' ');
 
-                for (int i = 0; i < fileData.length; i++) {
-                    if (fileData[i] == 0) {
-                        bodyStartIndex = i + 1;
-                        break;
-                    }
-                }
+                byte[] body = new byte[fileData.length - bodyStartIndex];
+                byte[] typeAsBytes = new byte[typeEndIndex + 1];
+                System.arraycopy(fileData, bodyStartIndex, body, 0, body.length);
+                System.arraycopy(fileData, 0, typeAsBytes, 0, typeAsBytes.length);
 
-                int bodyLength = fileData.length - bodyStartIndex;
-                byte[] body = new byte[bodyLength];
-                System.arraycopy(fileData, bodyStartIndex, body, 0, bodyLength);
+                ObjectType type = ObjectType.getTypeByName(new String(typeAsBytes));
+                if (type == null) throw new IllegalStateException("Object Type not found: " + new String(typeAsBytes));
 
-                // TODO: handle trees as well. Currently I am just handling blobs in Index and Trees
-                GitObject blob = new Blob(body);
-                entries.add(new TreeEntry(objectId.getId(), String.valueOf(objectData[2]),blob.type()));
+                GitObject object = switch (type) {
+                    case BLOB -> new Blob(body);
+                    case TREE -> new Tree(body);
+                    // TODO: Commit still to be implemented
+                    case COMMIT -> null;
+                };
+
+                if (object == null) throw new IllegalStateException("Object is null, an object must be present in the current state");
+
+                entries.add(new TreeEntry(objectId.getId(), String.valueOf(objectData[1]), object.type()));
             }
         }
 
         Tree tree = new Tree(entries);
         ObjectId treeId = computeId(tree);
 
-        fs.createDirectory(Path.of(".jgit/objects/" + treeId.getDir()));
-        fs.createFile(Path.of(".jgit/objects/" + treeId.getDir() + "/" + treeId.getFile()));
         byte[] toWrite = concatByteArray(objectHeaderToBytes(tree), tree.serialize());
-        fs.write(".jgit/objects/" + treeId.getDir() + "/" + treeId.getFile(), toWrite);
 
+        createFileAndWrite(
+                ".jgit/objects/" + treeId.getDir(),
+                ".jgit/objects/" + treeId.getDir() + "/" + treeId.getFile(),
+                toWrite
+        );
+
+        fs.cleanFile(".jgit/index");
         return treeId;
     }
 
@@ -126,6 +132,36 @@ public class ObjectStoreImpl implements ObjectStore {
         return fs.readFile(path);
     }
 
+    public boolean validateObjectType(String objectId, ObjectType objectType) throws IOException {
+        GitObject object = getObject(objectId);
+
+        if (object == null) throw new IllegalArgumentException("Object not found when validating type");
+
+        return object.type() == objectType;
+    }
+
+    private GitObject getObject(String hash) throws IOException {
+        ObjectId objectId = new ObjectId(hash);
+        byte[] file = fs.readFileBytes(Path.of(".jgit/objects/" + objectId.getDir() + "/" + objectId.getFile()));
+
+        int headerSize = getHeaderSize(file);
+        byte[] headerBytes = new byte[headerSize];
+        System.arraycopy(file, 0, headerBytes, 0, headerSize);
+
+        byte[] body = new byte[file.length - headerSize];
+        System.arraycopy(file, headerSize, body, 0, file.length - headerSize);
+
+        String header = new String(headerBytes, StandardCharsets.UTF_8);
+        String objectType = header.split(" ", 2)[0];
+
+        if (Objects.equals(objectType, "tree")) return new Tree(body);
+
+        if (Objects.equals(objectType, "blob")) return new Blob(body);
+
+        return null;
+    }
+
+    // TODO: This can change
     private GitObject createGitObject(byte[] data, ObjectType type) {
         try {
             Constructor<? extends GitObject> constructor = objectTypeMap.get(type).getConstructor(byte[].class);
@@ -152,5 +188,55 @@ public class ObjectStoreImpl implements ObjectStore {
 
     private byte[] objectHeaderToBytes(GitObject objects) {
         return objects.getHeader().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String getObjectHeader(byte[] data) {
+        int headerIndex = 0;
+
+        for (int i = 0; i < data.length; i++) {
+            if (data[i] == '\0') {
+                headerIndex = i;
+            }
+        }
+
+        if (headerIndex == 0) {
+            throw new IllegalArgumentException("No header found for provided object");
+        }
+
+        byte[] headerData = new byte[headerIndex + 1];
+        System.arraycopy(data, 0, headerData, headerIndex, headerIndex + 1);
+
+        return new String(headerData, StandardCharsets.UTF_8);
+    }
+
+    private int getHeaderSize(byte[] data) {
+        int headerSize = 0;
+
+        for (int i = 0; i < data.length; i++) {
+            if (data[i] == '\0') {
+                headerSize = i + 1;
+                break;
+            }
+        }
+
+        return headerSize;
+    }
+
+    private void createFileAndWrite(String dirPath, String filePath, byte[] data) throws IOException {
+        fs.createDirectory(Path.of(dirPath));
+        fs.createFile(Path.of(filePath));
+        fs.write(filePath, data);
+    }
+
+    private int findIndexOf(byte[] a, byte c) {
+        int result = 0;
+        for (int i = 0; i < a.length; i++) {
+            if (a[i] == c) {
+                result = i;
+                break;
+            }
+        }
+
+        return result;
     }
 }

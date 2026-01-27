@@ -28,4 +28,6 @@ public interface ObjectStore {
      * @return
      */
     ObjectId writeTree() throws IOException;
+
+    boolean validateObjectType(String objectId, ObjectType type) throws IOException;
 }

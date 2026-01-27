@@ -51,4 +51,11 @@ public class FileSystemService {
     public byte[] readFileBytes(Path filePath) throws IOException {
         return Files.readAllBytes(filePath);
     }
+
+    public void cleanFile(String filePath) throws IOException {
+        try (PrintWriter writer = new PrintWriter(filePath)) {
+            writer.print("");
+            writer.close();
+        }
+    }
 }

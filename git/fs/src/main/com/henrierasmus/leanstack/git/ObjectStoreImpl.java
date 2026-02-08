@@ -3,9 +3,11 @@ package com.henrierasmus.leanstack.git;
 import com.henrierasmus.leanstack.git.domain.*;
 import com.henrierasmus.leanstack.git.fs.internal.FileSystemService;
 import com.henrierasmus.leanstack.git.fs.internal.MessageDigestService;
+import com.henrierasmus.leanstack.git.domain.Node;
 import com.henrierasmus.leanstack.git.ports.ObjectStore;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -88,11 +90,11 @@ public class ObjectStoreImpl implements ObjectStore {
                 GitObject object = switch (type) {
                     case BLOB -> new Blob(body);
                     case TREE -> new Tree(body);
-                    // TODO: Commit still to be implemented
                     case COMMIT -> null;
                 };
 
-                if (object == null) throw new IllegalStateException("Object is null, an object must be present in the current state");
+                if (object == null)
+                    throw new IllegalStateException("Object is null, an object must be present in the current state");
 
                 entries.add(new TreeEntry(objectId.getId(), String.valueOf(objectData[1]), object.type()));
             }
@@ -132,12 +134,49 @@ public class ObjectStoreImpl implements ObjectStore {
         return fs.readFile(path);
     }
 
+    @Override
     public boolean validateObjectType(String objectId, ObjectType objectType) throws IOException {
         GitObject object = getObject(objectId);
 
         if (object == null) throw new IllegalArgumentException("Object not found when validating type");
 
         return object.type() == objectType;
+    }
+
+    @Override
+    public ObjectId commitTree(String treeId, String message) throws IOException {
+        Commit commit = new Commit(treeId.getBytes(StandardCharsets.UTF_8), message.getBytes(StandardCharsets.UTF_8));
+        ObjectId objectId = computeId(commit);
+        byte[] toWrite = concatByteArray(commit.getHeader().getBytes(StandardCharsets.UTF_8), commit.serialize());
+        fs.write(objectId.getDir() + "/" + objectId.getFile(), toWrite);
+        return objectId;
+    }
+
+    @Override
+    public Node getNodes(String path, Integer iteration) {
+        Node root = new Node(null, new File(path), new ArrayList<Node>());
+        if (!root.getFile().isDirectory()) throw new IllegalArgumentException("Path does not point to a directory");
+        File[] files = root.getFile().listFiles();
+        if (files == null) return null;
+        createNodes(files, root);
+        return root;
+    }
+
+    private void createNodes(File[] files, Node parent) {
+        if (files == null) return;
+
+        for (File file : files) {
+            if (file.getName().equals(".jgit")) continue;
+
+            if (file.isDirectory()) {
+                Node node = new Node(parent, file, new ArrayList<Node>());
+                parent.getChildren().add(node);
+                createNodes(file.listFiles(), node);
+                continue;
+            }
+
+            parent.getChildren().add(new Node(parent, file, null));
+        }
     }
 
     private GitObject getObject(String hash) throws IOException {

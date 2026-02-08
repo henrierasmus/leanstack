@@ -32,6 +32,7 @@ public class CommandRegistry {
         REGISTRY.put("update-index", UpdateIndexCommand.factory());
         REGISTRY.put("write-tree", WriteTreeCommand.factory());
         REGISTRY.put("read-tree", ReadTreeCommand.factory());
+        REGISTRY.put("view-files", ViewFilesCommand.factory());
 //        REGISTRY.put("read-tree", ReadTreeCommand.class);
 //        REGISTRY.put("commit-tree", CommitTreeCommand.class);
     }

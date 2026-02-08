@@ -1,5 +1,6 @@
 package com.henrierasmus.leanstack.git.ports;
 
+import com.henrierasmus.leanstack.git.domain.Node;
 import com.henrierasmus.leanstack.git.domain.ObjectId;
 import com.henrierasmus.leanstack.git.domain.ObjectType;
 
@@ -30,4 +31,8 @@ public interface ObjectStore {
     ObjectId writeTree() throws IOException;
 
     boolean validateObjectType(String objectId, ObjectType type) throws IOException;
+
+    ObjectId commitTree(String treeId, String message) throws IOException;
+
+    Node getNodes(String path, Integer offset);
 }

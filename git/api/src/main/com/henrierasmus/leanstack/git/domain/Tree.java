@@ -20,7 +20,7 @@ public class Tree implements GitObject {
 
         while (offset < data.length) {
             TreeEntry.ParsedEntry parsedEntry = TreeEntry.parse(data, offset);
-            assert parsedEntry != null;
+            if (parsedEntry == null) throw new IndexOutOfBoundsException("Index out of bounds while parsing data[] to Tree at offset: " + offset);
             offset = parsedEntry.nextOffset();
             treeEntries.add(parsedEntry.entry());
         }
@@ -36,7 +36,7 @@ public class Tree implements GitObject {
         return serialized.clone();
     }
 
-    public byte[] serializeTree() {
+    private byte[] serializeTree() {
         int size = 0;
 
         for (TreeEntry entry : treeEntries) {

@@ -7,6 +7,7 @@ import com.henrierasmus.leanstack.git.cli.runtime.RuntimeContext;
 import com.henrierasmus.leanstack.git.domain.Node;
 
 import java.io.IOException;
+import java.util.List;
 
 public class ViewFilesCommand implements Command {
     private final CommandContext args;
@@ -20,36 +21,25 @@ public class ViewFilesCommand implements Command {
     @Override
     public String execute() throws IOException {
         Node root = ctx.objectStore().getNodes(System.getProperty("user.dir"), 0);
-//        printNode(root);
-        return buildResponse(root, new StringBuilder()).toString();
+        return buildResponse(root, new StringBuilder(), "", "", true).toString();
     }
 
-    private void printNode(Node node) {
-        if (node.getChildren() == null) {
-            System.out.println("\u2514 " + node.getFile().getName());
-            return;
-        }
+    private StringBuilder buildResponse(Node node, StringBuilder sb, String prefix, String connector, boolean isLastSibling) {
+        sb.append("\n").append(prefix).append(connector).append(node.getFile().getName());
 
-        System.out.println("\u2502 " + node.getFile().getName());
-        for (Node child : node.getChildren()) {
-            printNode(child);
-        }
-    }
-
-    private StringBuilder buildResponse(Node node, StringBuilder sb) {
-        boolean addedToResponse = false;
-        if (node.getParent() == null) {
-            sb.append(node.getFile().getName()).append("\n");
-            addedToResponse = true;
-        }
-
-        if (node.getChildren() != null) {
-            if (!addedToResponse) sb.append("\u2514 ").append(node.getFile().getName()).append("\n").append("  ");
-            for (Node child : node.getChildren()) {
-                sb = buildResponse(child, sb);
+        List<Node> children = node.getChildren();
+        if (children != null) {
+            for (int i = 0; i < children.size(); i++) {
+                String childPrefix = prefix + "  ";
+                if (!isLastSibling) {
+                    childPrefix = prefix + "\u2502" + "  ";
+                }
+                if (i == children.size() - 1) {
+                    buildResponse(children.get(i), sb, childPrefix, "\u2514 ", true);
+                } else {
+                    buildResponse(children.get(i), sb, childPrefix, "\u251C ", false);
+                }
             }
-        } else {
-            sb.append("\u2502 ").append(node.getFile().getName()).append("\n");
         }
 
         return sb;

@@ -26,6 +26,10 @@ public class Node {
         return children;
     }
 
+    public boolean hasParent() {
+        return parent != null;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

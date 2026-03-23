@@ -166,7 +166,7 @@ public class ObjectStoreImpl implements ObjectStore {
         if (files == null) return;
 
         for (File file : files) {
-            if (file.getName().equals(".jgit")) continue;
+//            if (file.getName().equals(".jgit")) continue;
 
             if (file.isDirectory()) {
                 Node node = new Node(parent, file, new ArrayList<Node>());
